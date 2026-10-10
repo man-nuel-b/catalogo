@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catálogo Oficial | Productos & Cotizaciones</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .card-hover { transition: all 0.25s ease-in-out; }
+    .card-hover:hover { transform: translateY(-4px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08); }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans antialiased min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <span class="text-xl font-extrabold tracking-tight text-gray-900">CATÁLOGO</span>
+      <a id="wsp-general-btn" href="#" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-2 transition-colors">
+        <i class="fab fa-whatsapp text-sm"></i>
+        <span>WhatsApp Directo</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Hero Banner -->
+  <section class="bg-white border-b border-gray-200 py-10 md:py-14 text-center">
+    <div class="max-w-3xl mx-auto px-4">
+      <span class="text-xs font-bold uppercase tracking-widest text-emerald-600 mb-2 block">Catálogo Online</span>
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight mb-3">Nuestros Productos</h1>
+      <p class="text-gray-500 text-sm sm:text-base">Haz clic en "Cotizar" en cualquiera de nuestros modelos para consultar directo por WhatsApp.</p>
+    </div>
+  </section>
+
+  <!-- Contenido -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
+    
+    <!-- Filtros -->
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
+      <div id="category-filters" class="flex flex-wrap gap-2"></div>
+      <span id="product-count" class="text-xs text-gray-400 font-medium">Cargando catálogo...</span>
+    </div>
+
+    <!-- Indicador de Carga -->
+    <div id="loader" class="text-center py-16">
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-emerald-600 border-t-transparent"></div>
+      <p class="mt-3 text-sm text-gray-500">Cargando productos...</p>
+    </div>
+
+    <!-- Grid de Productos -->
+    <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-gray-200 py-6 text-center text-xs text-gray-400">
+    <p>© 2026 Catálogo Comercial. Todos los derechos reservados.</p>
+  </footer>
+
+  <script>
+    // ==========================================
+    // 1. REEMPLAZA ESTOS DOS VALORES:
+    // ==========================================
+    const TELEFONO_WHATSAPP = "56912345678"; // Tu número con 569...
+    const GOOGLE_SHEET_CSV_URL = "PEGAR_AQUI_TU_ENLACE_CSV_DE_GOOGLE_SHEETS"; 
+    // ==========================================
+
+    document.getElementById('wsp-general-btn').href = `https://wa.me/${TELEFONO_WHATSAPP}?text=${encodeURIComponent("Hola, me gustaría realizar una consulta.")}`;
+
+    let productosData = [];
+
+    // Función para parsear CSV simple de Google Sheets
+    function parseCSV(text) {
+      const lines = text.trim().split('\n');
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
+      
+      return lines.slice(1).map(line => {
+        const values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+        const cleanValues = values.map(v => v.replace(/^"|"$/g, '').trim());
+        
+        let row = {};
+        headers.forEach((header, index) => {
+          row[header] = cleanValues[index] || '';
+        });
+        return row;
+      });
+    }
+
+    // Cargar datos desde Google Sheets CSV
+    async function loadCatalog() {
+      try {
+        const response = await fetch(GOOGLE_SHEET_CSV_URL);
+        const csvText = await response.text();
+        productosData = parseCSV(csvText);
+        renderProducts(productosData);
+      } catch (error) {
+        console.error("Error al cargar la planilla:", error);
+        document.getElementById('loader').innerHTML = `<p class="text-red-500 text-sm">Error al cargar productos. Revisa el enlace CSV de Google Sheets.</p>`;
+      }
+    }
+
+    function renderProducts(products) {
+      const grid = document.getElementById('product-grid');
+      const loader = document.getElementById('loader');
+      const countLabel = document.getElementById('product-count');
+
+      loader.style.display = 'none';
+      grid.innerHTML = '';
+      countLabel.textContent = `${products.length} productos disponibles`;
+
+      products.forEach(p => {
+        const msg = `Hola! Vengo desde la página web y quiero cotizar el modelo *${p.nombre}* (${p.precio}).`;
+        const wspUrl = `https://wa.me/${TELEFONO_WHATSAPP}?text=${encodeURIComponent(msg)}`;
+
+        const card = `
+          <div class="card-hover bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="${p.categoria}">
+            <div>
+              <div class="h-56 bg-gray-100 relative overflow-hidden">
+                <img src="${p.imagen || 'https://via.placeholder.com/800x600'}" alt="${p.nombre}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/800x600'">
+                <span class="absolute top-3 left-3 bg-black text-white text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md">${p.categoria}</span>
+              </div>
+              <div class="p-5">
+                <h3 class="text-base font-bold text-gray-900">${p.nombre}</h3>
+                <p class="text-xs text-gray-500 mt-2 line-clamp-3">${p.descripcion}</p>
+              </div>
+            </div>
+            <div class="p-5 pt-0 border-t border-gray-50 flex items-center justify-between mt-4">
+              <div>
+                <span class="text-[10px] text-gray-400 block uppercase font-medium">Precio Ref.</span>
+                <span class="text-base font-extrabold text-gray-900">${p.precio}</span>
+              </div>
+              <a href="${wspUrl}" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2.5 rounded-lg flex items-center gap-1.5 transition-colors">
+                <i class="fab fa-whatsapp text-sm"></i>
+                <span>Cotizar</span>
+              </a>
+            </div>
+          </div>
+        `;
+        grid.innerHTML += card;
+      });
+
+      setupCategoryButtons();
+    }
+
+    function setupCategoryButtons() {
+      const categories = ['todos', ...new Set(productosData.map(p => p.categoria).filter(Boolean))];
+      const container = document.getElementById('category-filters');
+      container.innerHTML = '';
+
+      categories.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.textContent = cat === 'todos' ? 'Todos' : cat;
+        btn.className = `filter-btn px-4 py-1.5 rounded-full text-xs font-semibold ${cat === 'todos' ? 'bg-black text-white' : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-100'}`;
+        btn.onclick = () => filterCategory(cat, btn);
+        container.appendChild(btn);
+      });
+    }
+
+    function filterCategory(category, clickedBtn) {
+      document.querySelectorAll('.filter-btn').forEach(b => {
+        b.className = 'filter-btn px-4 py-1.5 rounded-full text-xs font-semibold bg-white text-gray-600 border border-gray-300 hover:bg-gray-100';
+      });
+      if(clickedBtn) {
+        clickedBtn.className = 'filter-btn px-4 py-1.5 rounded-full text-xs font-semibold bg-black text-white';
+      }
+
+      if (category === 'todos') {
+        renderProducts(productosData);
+      } else {
+        const filtered = productosData.filter(p => p.categoria === category);
+        renderProducts(filtered);
+      }
+    }
+
+    window.onload = loadCatalog;
+  </script>
+</body>
+</html>
